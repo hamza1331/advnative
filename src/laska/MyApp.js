@@ -2,170 +2,26 @@ import React, { Fragment } from "react";
 import withNavigationProp from "./_laska_/withNavigationProp.js";
 import {
   Image,
-  StyleSheet,
   View,
   TextInput,
   Button,
   ScrollView,
   StatusBar,
   Alert,
-  TouchableWithoutFeedback,
-  Dimensions
+  CameraRoll
 } from "react-native";
 import Icon from 'react-native-vector-icons/FontAwesome';
-import ImageGallery, { openImageGallery } from '@expo/react-native-image-gallery';
+import {styles} from "./styles";
+import ImageGallery from '@expo/react-native-image-gallery';
 import { DatePicker } from 'native-base';
-
-import {Font} from 'expo'
-class ListItem extends React.Component {
-  _openInImageGallery = () => {
-    let { item } = this.props;
-
-    this._view.measure((rx, ry, w, h, x, y) => {
-      openImageGallery({
-        animationMeasurements: {w, h, x, y},
-        list,
-        item,
-      });
-    });
-  };
-
-  render() {
-    let { list, item } = this.props;
-
-    let { width, height } = item;
-
-    let targetWidth = Dimensions.get('screen').width*0.9;
-    let multiplier = targetWidth / width;
-    let targetHeight = multiplier * height;
-
-    return (
-      <TouchableWithoutFeedback onPress={this._openInImageGallery}>
-        <Image
-          ref={view => { this._view = view }}
-          source={{uri: item.imageUrl}}
-          style={{width: targetWidth, height: targetHeight, marginBottom: 20}} />
-      </TouchableWithoutFeedback>
-    );
-  }
-
-}
-class FakeContent extends React.Component {
-  render() {
-    return (
-        <ScrollView style={{flex: 1}} contentContainerStyle={{alignItems: 'center', paddingTop: 20}}>
-          {list.map(item => <ListItem key={item.imageUrl} item={item} />)}
-        </ScrollView>
-    );
-  }
-}
-const styles = StyleSheet.create({
-  s1b4c318c: { height: `100%`, width: `100%` },
-  sb32b3614: {
-    alignItems: `center`,
-    backgroundColor: `rgba(191, 191, 191, 1)`,
-    flex: 1,
-    justifyContent: `center`,
-    maxHeight: `20%`,
-    width: `100%`
-  },
-  s7ff692e2: {
-    backgroundColor: `rgba(255, 255, 255, 1.0)`,
-    borderColor: `rgba(0, 0, 0, 1)`,
-    borderRadius: 10,
-    borderWidth: 2,
-    color: `rgba(60, 60, 65, 1)`,
-    height: 30,
-    marginLeft: 10,
-    marginTop: 10,
-    paddingLeft: 5,
-    width: `90%`
-  },
-  sa5239b01: {
-    backgroundColor: `rgba(255, 255, 255, 1.0)`,
-    borderColor: `rgba(0, 0, 0, 1)`,
-    borderRadius: 10,
-    borderWidth: 2,
-    color: `rgba(60, 60, 65, 1)`,
-    height: 30,
-    marginLeft: 10,
-    marginTop: 10,
-    width: `90%`
-  },
-  s96e03553: {
-    backgroundColor: `rgba(255, 255, 255, 1.0)`,
-    borderColor: `rgba(0, 0, 0, 1)`,
-    borderRadius: 10,
-    borderWidth: 2,
-    color: `rgba(60, 60, 65, 1)`,
-    height: 30,
-    marginLeft: 10,
-    marginTop: 10,
-    paddingLeft: 5,
-    width: `90%`
-  },
-  s6dd4cd00: {
-    backgroundColor: `rgba(255, 255, 255, 1.0)`,
-    borderColor: `rgba(0, 0, 0, 1)`,
-    borderRadius: 10,
-    borderWidth: 2,
-    color: `rgba(60, 60, 65, 1)`,
-    marginLeft: 10,
-    marginTop: 10,
-    paddingLeft: 5,
-    width: `90%`
-  },
-  sabb47c64: {
-    backgroundColor: `rgba(255, 255, 255, 1.0)`,
-    borderColor: `rgba(0, 0, 0, 1)`,
-    borderRadius: 10,
-    borderWidth: 1,
-    height: 35,
-    marginLeft: 10,
-    marginTop: 10,
-    width: `90%`
-  },
-  s8d05a1eb: { fontSize: 50 },
-  s36d0bd15: {
-    alignItems: `center`,
-    height: 30,
-    justifyContent: `center`,
-    marginLeft: 120,
-    marginTop: 15,
-    width: `30%`
-  },
-  sc9f26d46: {
-    height: 30,
-    justifyContent: `center`,
-    marginLeft: 10,
-    marginTop: 15,
-    width: `90%`
-  },
-  sc1a4da9b: { height: `80%`, width: `100%` },
-  s583641f3: {
-    backgroundColor: `rgba(255, 255, 255, 1)`,
-    flex: 1,
-    maxHeight: `100%`,
-    width: `100%`
-  },
-  welcome: {
-    fontSize: 20,
-    textAlign: 'center',
-    margin: 10,
-  },
-  instructions: {
-    textAlign: 'center',
-    color: '#333333',
-    marginBottom: 5,
-  }
-});
-class MyApp extends React.PureComponent {
+import {Font,ImagePicker,Permissions} from 'expo'
+import ListItem from './ListItems'
+class MyApp extends React.Component {
   static navigationOptions = { title: "My App" };
   constructor(props) {
     super(props);
-
     this.state = {};
-    this.state = { chosenDate: new Date() };
+    this.state = { chosenDate: new Date(),image:'',images:[],galleryImages:[],showSubmit:true };
     this.setDate = this.setDate.bind(this);
   }
   setDate(newDate) {
@@ -177,7 +33,54 @@ class MyApp extends React.PureComponent {
       'Roboto_medium': require('native-base/Fonts/Roboto_medium.ttf'),
     });
   }
-  
+  _takePhoto = async () => {
+    const {
+      status: cameraPerm
+    } = await Permissions.askAsync(Permissions.CAMERA);
+
+    const {
+      status: cameraRollPerm
+    } = await Permissions.askAsync(Permissions.CAMERA_ROLL);
+
+    // only if user allows permission to camera AND camera roll
+    if (cameraPerm === 'granted' && cameraRollPerm === 'granted') {
+      let pickerResult = await ImagePicker.launchCameraAsync();
+
+      this._handleImagePicked(pickerResult);
+    }
+  };
+  _handleImagePicked = async pickerResult => {
+    
+    try {
+      this.setState({
+        uploading: true
+      });
+
+      if (!pickerResult.cancelled) {
+       CameraRoll.saveToCameraRoll(pickerResult.uri)
+       let imgs = this.state.images
+       imgs.push(pickerResult)
+       let gImgs = this.state.galleryImages
+       let obj = {}
+       let index = gImgs.length+1
+       obj.imageUrl = pickerResult.uri
+       obj.description = 'Image#'+index
+       obj.width=640
+       obj.height = 640
+       gImgs.push(obj)
+        this.setState({
+          images: imgs,
+          galleryImages:gImgs
+        });
+      }
+    } catch (e) {
+      Alert.alert('Failed','Upload failed, sorry :(');
+    } finally {
+      this.setState({
+        uploading: false
+      });
+    }
+  };
   render() {
     return (
       <Fragment>
@@ -206,7 +109,6 @@ class MyApp extends React.PureComponent {
               />
             </View>
             <View style={styles.sabb47c64}>
-              {/* <TextInput placeholder={new Date()} defaultValue={new Date()} underlineColorAndroid='transparent' style={styles.sabb47c64} /> */}
               <DatePicker
             defaultDate={new Date()}
             minimumDate={new Date(2018, 1, 1)}
@@ -222,63 +124,25 @@ class MyApp extends React.PureComponent {
             onDateChange={this.setDate}
             />
             </View>
-            <View style={styles.s36d0bd15} onTouchEnd={()=>{
-              Alert.alert('Failed','Hello')
-            }}>
+            <View style={styles.s36d0bd15} onTouchEnd={this._takePhoto}>
               <Icon
                 name='camera'
                 style={styles.s8d05a1eb}
               />
             </View>
-            <View style={styles.sc9f26d46}>
+           {this.state.images.length>0 && <ScrollView contentContainerStyle={{alignItems: 'center', paddingTop: 20}}>
+          {this.state.images.map((item,index) => <ListItem key={index} item={item} images={this.state.galleryImages} />)}
+        </ScrollView>}
+            {this.state.images.length>0 && <ImageGallery/>}
+            {this.state.showSubmit&&<View style={styles.sc9f26d46}>
               <Button title={`Submit`} onPress={() => {}} />
-            </View>
-            <FakeContent/>
-            <ImageGallery />
+            </View>}
           </ScrollView>
         </View>
       </Fragment>
     );
   }
 }
-const list = [
-  {
-    description: ':O hat etc',
-    imageUrl: 'https://images.freeimages.com/images/large-previews/e6b/yellow-beetle-1366999.jpg',
-    width: 480,
-    height: 480,
-  },
-  {
-    imageUrl: 'https://images.freeimages.com/images/large-previews/d1f/balloon-contest-1417733.jpg',
-    description: 'wood',
-    width: 640,
-    height: 640,
-  },
-  {
-    imageUrl: 'https://images.freeimages.com/images/large-previews/4dc/street-1366583.jpg',
-    description: 'making beer etc',
-    width: 640,
-    height: 640,
-  },
-  {
-    imageUrl: 'https://images.freeimages.com/images/large-previews/ed3/a-stormy-paradise-1-1563744.jpg',
-    description: 'making beer etc',
-    width: 640,
-    height: 640,
-  },
-  {
-    imageUrl: 'https://images.freeimages.com/images/large-previews/371/swiss-mountains-1362975.jpg',
-    description: 'making beer etc',
-    width: 640,
-    height: 640,
-  },
-  {
-    imageUrl: 'https://images.freeimages.com/images/large-previews/859/burning-trees-1391193.jpg',
-    description: 'making beer etc',
-    width: 640,
-    height: 640,
-  },
-];
 MyApp.defaultProps = {};
 
 MyApp = withNavigationProp(MyApp);
