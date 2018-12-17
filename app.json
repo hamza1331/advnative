@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Getting Started",
-    "description": "Built with laska.io",
+    "name": "TwopZero",
+    "description": "Advert App",
     "slug": "test",
     "privacy": "unlisted",
     "sdkVersion": "30.0.0",
@@ -24,7 +24,11 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.dreamerz.twopzero"
+    },
+    "android": {
+      "package": "com.dreamerz.twopzero"
     }
   }
 }

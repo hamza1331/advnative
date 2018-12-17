@@ -9,12 +9,13 @@ import {
   StatusBar,
   Alert,
   CameraRoll,
-  TouchableWithoutFeedback
+  TouchableWithoutFeedback,
+  ActivityIndicator,
+  Text
 } from "react-native";
 import Icon from 'react-native-vector-icons/FontAwesome';
 import {styles} from "./styles";
 import ImageGallery from '@expo/react-native-image-gallery';
-import { DatePicker } from 'native-base';
 import {Font,ImagePicker,Permissions} from 'expo'
 import ListItem from './ListItems'
 class MyApp extends React.Component {
@@ -22,7 +23,6 @@ class MyApp extends React.Component {
   constructor(props) {
     super(props);
     this.initial ={
-      chosenDate: new Date(),
       image:'',
       images:[],
       galleryImages:[],
@@ -33,17 +33,15 @@ class MyApp extends React.Component {
       description:'',
       ccInputs:[],
       ccEmails:'',
-      showCC:false
+      showCC:false,
+      showActivity:false
     }
     this.state = this.initial
-    this.setDate = this.setDate.bind(this);
     this.handleSubmit=this.handleSubmit.bind(this)
     this.renderAddButton=this.renderAddButton.bind(this)
     this.handleMultipleEmails=this.handleMultipleEmails.bind(this)
   }
-  setDate(newDate) {
-    this.setState({ chosenDate: newDate });
-  }
+  
   async componentWillMount() {
     await Font.loadAsync({
       'Roboto': require('native-base/Fonts/Roboto.ttf'),
@@ -99,15 +97,18 @@ class MyApp extends React.Component {
     }
   };
   async handleSubmit(){
-    if(this.state.description&&this.state.chosenDate&&this.state.email&&this.state.name&&this.state.galleryImages.length>0){
+    if(this.state.description&&this.state.email&&this.state.name&&this.state.galleryImages.length>0){
+      this.setState({
+        showActivity:true
+      })
       let images = this.state.galleryImages
-      let apiUrl = 'http://192.168.43.25:8080/users';
+      let apiUrl = 'https://twopzero-nkybnycczm.now.sh/users';
+      // let apiUrl = 'http://192.168.43.25:8080/users'
       let formData = new FormData();
       formData.append('name',this.state.name)
       formData.append('email',this.state.email)
       formData.append('description',this.state.description)
       formData.append('location',this.state.location)
-      formData.append('date',this.state.chosenDate.toString())
          if(this.state.ccEmails.length>0){
           let inputs = JSON.stringify(this.state.ccEmails.split('\n'))
           console.log(inputs)
@@ -133,21 +134,35 @@ class MyApp extends React.Component {
           },
         };
           fetch(apiUrl, options).then(res=>res.json()).then(data=>{
-            Alert.alert('Success',data.message)
-            this.setState({
-              chosenDate: new Date(),
-              image:'',
-              images:[],
-              galleryImages:[],
-              showSubmit:true,
-              name:'',
-              email:'',
-              location:'',
-              description:'',
-              ccInputs:[],
-              ccEmails:'',
-              showCC:false
-            })
+            if(data.message==='Done')
+            {
+              Alert.alert('Success',data.message)
+              this.setState({
+                image:'',
+                images:[],
+                galleryImages:[],
+                showSubmit:true,
+                name:'',
+                email:'',
+                location:'',
+                description:'',
+                ccInputs:[],
+                ccEmails:'',
+                showCC:false,
+                showActivity:false
+              })
+            }
+            else if(data.message==='Error in PDF'){
+              Alert.alert('Failed',data.message)
+              this.setDate({
+                showActivity:false
+              })
+            }
+            else{
+              this.setState({
+                showActivity:false
+              })
+            }
          }).catch(err=>{
            Alert.alert('Failed',err)
          });
@@ -174,15 +189,13 @@ class MyApp extends React.Component {
   render() {
     return (
       <Fragment>
-        <View style={styles.s583641f3}>
+       {!this.state.showActivity&& <View style={styles.s583641f3}>
         <StatusBar hidden/>
           <View style={styles.sb32b3614}>
-            <Image source={require('./icn.jpeg')} style={styles.s1b4c318c} />
+            <Image source={require('./icn.jpeg')} style={{borderRadius:10,borderWidth:1}} />
           </View>
           <ScrollView style={styles.sc1a4da9b}>
-            <View>
-              <TextInput value={this.state.name} autoFocus={true} onChangeText={text=>this.setState({name:text})} underlineColorAndroid='transparent' keyboardType='default' placeholder={`Client Name`} style={styles.s7ff692e2} />
-            </View>
+              <TextInput value={this.state.name} autoFocus={true} onChangeText={text=>this.setState({name:text})} underlineColorAndroid='transparent' placeholder='Client Name' keyboardType={'default'} style={styles.s7ff692e2} />
            <View style={{flexDirection:'row',paddingTop:10}}>
               <TextInput value={this.state.email} onChangeText={text=>this.setState({email:text})} underlineColorAndroid='transparent' placeholder={`Email`} style={styles.sa5239b01} keyboardType='email-address' />
             {!this.state.showCC&&this.renderAddButton()}
@@ -212,22 +225,6 @@ class MyApp extends React.Component {
                 value={this.state.description}
               />
             </View>
-            <View style={styles.sabb47c64}>
-              <DatePicker
-            defaultDate={new Date()}
-            minimumDate={new Date(2018, 1, 1)}
-            maximumDate={new Date(2018, 12, 31)}
-            locale={"en"}
-            timeZoneOffsetInMinutes={undefined}
-            modalTransparent={false}
-            animationType={"fade"}
-            androidMode={"default"}
-            placeHolderText="Select Date"
-            textStyle={{ color: "black",fontSize:20,fontWeight:'bold' }}
-            placeHolderTextStyle={{ color: "black",fontWeight:'bold' }}
-            onDateChange={this.setDate}
-            />
-            </View>
             <View style={styles.s36d0bd15} onTouchEnd={this._takePhoto}>
               <Icon
                 name='camera'
@@ -239,10 +236,17 @@ class MyApp extends React.Component {
         </ScrollView>}
             {this.state.images.length>0 && <ImageGallery/>}
             {this.state.showSubmit&&<View style={styles.sc9f26d46}>
-              <Button title={`Submit`} onPress={this.handleSubmit} />
+              <Button color='#006bb3' title={`Submit`} onPress={this.handleSubmit} />
             </View>}
           </ScrollView>
-        </View>
+        </View>}
+        {this.state.showActivity&&<View style={styles.container}>
+              <ActivityIndicator
+              size='large'
+              color='#0000ff'
+              />
+              <Text style={{fontSize:20,marginTop:10}}>Sending Signature Request</Text>
+        </View>}
       </Fragment>
     );
   }
